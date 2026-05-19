@@ -10,7 +10,7 @@ else:
 temperatura = 10
 
 
-if temperatura>30
+if temperatura>30:
     print("its a hot day , stay hydrated")
 elif 20<temperatura <=30:
     print("The weather is pleasent")
