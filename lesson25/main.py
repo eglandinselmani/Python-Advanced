@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from typing import list
+from typing import list, List
 
 import database
 import models
@@ -16,6 +16,31 @@ def read_root():
 def create_movie(movie: MovieCreate):
     movie_id = database.create_movie(movie)
     return models.Movie(id=movie_id, **movie.dict())
+
+
+@app.put("/movies/",response_model=Movie)
+def update_movie(movie_id:int, Movie:MovieCreate):
+    updated = database.update_movie(movie_id,Movie)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return models.Movie(id=movie_id, **movie.dict())
+
+
+@app.delete("/movies/",response_model=dict)
+def delete_movie(movie_id:int):
+    deleted = database.delete_movie(movie_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return {"message":"Movie deleted"}
+
+
+@app.get("/movies/",response_model=List[Movie])
+def read_movies():
+    return database.read_movie()
+
+
+
+
 
 
 
