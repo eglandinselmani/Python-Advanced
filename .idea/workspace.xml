@@ -5,7 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e872241d-9e25-489d-9670-c19232a57c50" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/challenge2/main.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lesson28/.env" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lesson28/app/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lesson28/app/database.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lesson28/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -22,6 +25,9 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/lesson28/app/database.py" root0="FORCE_HIGHLIGHTING" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0
