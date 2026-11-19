@@ -19,10 +19,8 @@ def render():
 
     with main:
         top = st.columns([4, 1.6], vertical_alignment="center")
-        q = state.call(api.asset, sym)
         with top[0]:
-            if q:
-                charts.symbol_header(q)
+            charts.live_header(sym)
         with top[1]:
             layout = st.segmented_control("Layout", ["1 chart", "2 charts", "4 charts"], default="1 chart", key="layout",
                                           label_visibility="collapsed") or "1 chart"

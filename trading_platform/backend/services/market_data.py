@@ -216,7 +216,7 @@ _YAHOO_PARAMS = {  # timeframe -> (interval, range, resample rule)
     "30m": ("30m", "1mo", None), "1h": ("60m", "6mo", None), "4h": ("60m", "6mo", "4h"),
     "1d": ("1d", "5y", None), "1w": ("1wk", "10y", None), "1M": ("1mo", "max", None),
 }
-_live_down_until = 0.0
+_down_until: dict[str, float] = {}   # provider name -> retry timestamp
 _lock = Lock()
 _cache: dict[tuple, tuple[float, object]] = {}
 
@@ -233,13 +233,51 @@ def _cached(key, ttl, fn):
     return val
 
 
+def provider_ok(name: str) -> bool:
+    return settings.MARKET_DATA_MODE != "simulated" and time.time() >= _down_until.get(name, 0.0)
+
+
 def live_enabled() -> bool:
-    return settings.MARKET_DATA_MODE != "simulated" and time.time() >= _live_down_until
+    """True while at least one live provider is believed to be reachable."""
+    return provider_ok("yahoo") or provider_ok("binance")
 
 
-def _mark_live_down():
-    global _live_down_until
-    _live_down_until = time.time() + 300  # retry live feed after 5 minutes
+def _mark_down(name: str):
+    _down_until[name] = time.time() + 120  # retry that provider after 2 minutes
+
+
+# ----------------------------------------------------------------------------- Binance (crypto, real time, no API key)
+BINANCE = {"BTC/USD": "BTCUSDT", "ETH/USD": "ETHUSDT", "SOL/USD": "SOLUSDT", "BNB/USD": "BNBUSDT",
+           "XRP/USD": "XRPUSDT", "ADA/USD": "ADAUSDT", "DOGE/USD": "DOGEUSDT"}
+_BINANCE_HOSTS = ["https://data-api.binance.vision", "https://api.binance.com"]
+
+
+def _binance_get(path: str, params: dict):
+    last = None
+    for host in _BINANCE_HOSTS:
+        try:
+            r = requests.get(host + path, params=params, timeout=4)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:  # try the next mirror
+            last = e
+    raise last
+
+
+def _binance_history(asset: Asset, timeframe: str, limit: int) -> pd.DataFrame:
+    rows = _binance_get("/api/v3/klines", {"symbol": BINANCE[asset.symbol], "interval": timeframe, "limit": limit})
+    df = pd.DataFrame(rows).iloc[:, :6]
+    df.columns = ["time", "open", "high", "low", "close", "volume"]
+    df["time"] = pd.to_datetime(df["time"], unit="ms", utc=True)
+    for c in ("open", "high", "low", "close", "volume"):
+        df[c] = df[c].astype(float)
+    return df
+
+
+def _binance_quote(asset: Asset) -> dict:
+    t = _binance_get("/api/v3/ticker/24hr", {"symbol": BINANCE[asset.symbol]})
+    return {"price": float(t["lastPrice"]), "prev_close": float(t["lastPrice"]) - float(t["priceChange"]),
+            "high": float(t["highPrice"]), "low": float(t["lowPrice"]), "volume": float(t["volume"]), "source": "live"}
 
 
 def _yahoo_fetch(asset: Asset, interval: str, rng: str):
@@ -272,13 +310,20 @@ def get_history(symbol: str, timeframe: str, limit: int = 300) -> tuple[pd.DataF
     if timeframe not in TIMEFRAMES:
         raise ValueError(f"Unknown timeframe '{timeframe}'")
     limit = max(5, min(limit, 1000))
-    if live_enabled():
+    if asset.symbol in BINANCE and provider_ok("binance"):
         try:
-            df = _cached(("hist", asset.symbol, timeframe), 30, lambda: _live_history(asset, timeframe))
+            df = _cached(("bhist", asset.symbol, timeframe, limit), 1.0, lambda: _binance_history(asset, timeframe, limit))
+            if len(df) >= 5:
+                return df, "live"
+        except Exception:
+            _mark_down("binance")
+    if provider_ok("yahoo"):
+        try:
+            df = _cached(("hist", asset.symbol, timeframe), 10, lambda: _live_history(asset, timeframe))
             if len(df) >= 5:
                 return df.tail(limit).reset_index(drop=True), "live"
         except Exception:
-            _mark_live_down()
+            _mark_down("yahoo")
     return _sim_history(asset, timeframe, limit), "simulated"
 
 
@@ -307,11 +352,16 @@ def _live_quote(asset: Asset) -> dict:
 def get_quote(symbol: str) -> dict:
     asset = get_asset(symbol)
     raw = None
-    if live_enabled():
+    if asset.symbol in BINANCE and provider_ok("binance"):
         try:
-            raw = _cached(("quote", asset.symbol), 20, lambda: _live_quote(asset))
+            raw = _cached(("bquote", asset.symbol), 1.0, lambda: _binance_quote(asset))
         except Exception:
-            _mark_live_down()
+            _mark_down("binance")
+    if raw is None and provider_ok("yahoo"):
+        try:
+            raw = _cached(("quote", asset.symbol), 10, lambda: _live_quote(asset))
+        except Exception:
+            _mark_down("yahoo")
     if raw is None:
         raw = _cached(("squote", asset.symbol), 1.0, lambda: _sim_quote(asset))
     d = _decimals(asset.base_price)
@@ -330,7 +380,7 @@ def get_quote(symbol: str) -> dict:
 
 def get_quotes(symbols: list[str] | None = None) -> list[dict]:
     syms = symbols or [a.symbol for a in CATALOG]
-    if live_enabled() and len(syms) > 3:
+    if live_enabled() and len(syms) > 3:  # parallel fetch when talking to live APIs
         with ThreadPoolExecutor(max_workers=8) as ex:
             return list(ex.map(get_quote, syms))
     return [get_quote(s) for s in syms]
@@ -352,18 +402,18 @@ def get_performance(symbol: str) -> dict[str, float | None]:
 
 
 def data_status() -> dict:
-    live = live_enabled()
-    if live:
-        try:  # probe with one cheap request (cached)
-            get_quote("AAPL")
-            live = live_enabled()
-        except Exception:
-            live = False
+    live = False
+    if settings.MARKET_DATA_MODE != "simulated":
+        for sym in ("BTC/USD", "AAPL"):          # probe one asset per provider (cached)
+            try:
+                live = get_quote(sym)["source"] == "live" or live
+            except Exception:
+                pass
     return {
-        "mode": settings.MARKET_DATA_MODE,
-        "live": live,
-        "source": "live" if live else "simulated",
-        "message": ("Live prices from Yahoo Finance." if live else
+        "mode": settings.MARKET_DATA_MODE, "live": live, "source": "live" if live else "simulated",
+        "providers": {"crypto": "Binance (real time)" if provider_ok("binance") else "unavailable",
+                      "other": "Yahoo Finance (may be delayed)" if provider_ok("yahoo") else "unavailable"},
+        "message": ("Live prices: crypto from Binance (real time), other assets from Yahoo Finance (may be delayed)." if live else
                     "SIMULATED DEMONSTRATION DATA – prices are generated locally and are NOT real market prices."),
     }
 

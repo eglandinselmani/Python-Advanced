@@ -40,7 +40,7 @@ def render():
         if b[1].button("Create alert", icon=":material/add_alert:", key="ad_alert"):
             st.session_state.alert_symbol = sym
             state.goto("alerts"); st.rerun()
-    charts.symbol_header(q)
+    charts.live_header(sym)
     main, side = st.columns([3.4, 1.2], gap="medium")
     with main:
         charts.chart_panel(sym, "asset", height=560)

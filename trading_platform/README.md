@@ -34,14 +34,19 @@ streamlit run frontend/app.py                 # terminal 2
 ```
 
 ## Real vs simulated data (important)
-* `MARKET_DATA_MODE=auto` (default): the backend tries **Yahoo Finance** (prices, candles) and public **RSS feeds** (news).
+* `MARKET_DATA_MODE=auto` (default): **crypto** comes from **Binance's public market-data API** (real time, no key), all other
+  assets from **Yahoo Finance** (can be delayed by minutes), news from public **RSS feeds**. TradingView itself has no public data API
+  and scraping it is against its terms, so it is not used.
+* **Live charts:** the chart, the price header and the watchlist refresh automatically every 2–3 s without reloading the page
+  (zoom/pan are preserved); use the **● Live** switch above a chart to pause it. Binance candles update tick by tick.
 * If the internet/feed is unreachable it falls back to a deterministic **simulator**. Simulated data is **always labelled**:
   every quote/candle response has `"source": "simulated"`, the UI shows an orange **SIMULATED** badge and a banner.
   Sample news and the economic calendar are labelled **SAMPLE**. Simulated prices are never presented as live.
 * `MARKET_DATA_MODE=simulated` forces offline mode (used by the automated tests).
 * Market caps shown are static approximate reference values.
-* *Honest note:* the live Yahoo/RSS code paths could not be exercised in the development sandbox (no internet), only the
-  fallback paths were run there. On a normal internet connection the live path is used automatically.
+* *Honest note:* the Binance/Yahoo/RSS code was tested with a faked HTTP layer only, because the development sandbox had no
+  internet; the simulated path was also verified in a real browser. Binance can be blocked in some countries – the app then
+  falls back to Yahoo, then to labelled simulated data. On a normal internet connection the live path is used automatically.
 
 ## Features
 Dark/light TradingView-style UI with left toolbar, right watchlist and big chart · candlestick / line / area charts, volume,
@@ -54,7 +59,7 @@ password change · 1/2/4-chart layouts.
 
 ## Tests
 ```bash
-pytest -q          # 69 tests: backend API, trading maths, indicators, DB persistence, restart test, frontend pages
+pytest -q          # 73 tests: backend API, trading maths, indicators, DB persistence, restart test, frontend pages
 ```
 
 ## Project layout

@@ -170,15 +170,11 @@ def controls(key: str) -> tuple[str, str, list[str]]:
     return tf, ct, st.session_state.get(in_key) or []
 
 
-def chart_panel(symbol: str, key: str, height: int = 560, show_controls: bool = True,
-                timeframe: str | None = None) -> None:
+REFRESH_SECONDS = 2
+
+
+def _render_chart(symbol, key, tf, ct, selected, height):
     api = state.api()
-    if show_controls:
-        tf, ct, selected = controls(key)
-    else:
-        s = state.settings()
-        tf, ct = timeframe or s.get("timeframe", "1h"), s.get("chart_type", "candles")
-        selected = state.indicator_labels_from_tokens(s.get("indicators", "volume"))
     tokens = [INDICATOR_OPTIONS[l] for l in selected if l != "Volume"]
     hist = state.call(api.history, symbol, tf, 300)
     if not hist or not hist["candles"]:
@@ -191,6 +187,30 @@ def chart_panel(symbol: str, key: str, height: int = 560, show_controls: bool = 
             series, ind_ts = ind["series"], ind["timestamps"]
     fig = build_figure(hist["candles"], series, ind_ts, symbol, ct, selected, height=height)
     st.plotly_chart(fig, config=PLOT_CONFIG, key=f"{key}_plot", width="stretch")
+
+
+# Two variants of the same fragment: only the chart re-runs (zoom/pan are kept via uirevision).
+_chart_live = st.fragment(run_every=REFRESH_SECONDS)(_render_chart)
+_chart_static = st.fragment(_render_chart)
+
+
+def chart_panel(symbol: str, key: str, height: int = 560, show_controls: bool = True,
+                timeframe: str | None = None) -> None:
+    if show_controls:
+        tf, ct, selected = controls(key)
+    else:
+        s = state.settings()
+        tf, ct = timeframe or s.get("timeframe", "1h"), s.get("chart_type", "candles")
+        selected = state.indicator_labels_from_tokens(s.get("indicators", "volume"))
+    live = st.toggle("● Live", value=True, key=f"{key}_live", help=f"Refresh the chart every {REFRESH_SECONDS} seconds")
+    (_chart_live if live else _chart_static)(symbol, key, tf, ct, selected, height)
+
+
+@st.fragment(run_every=REFRESH_SECONDS)
+def live_header(symbol: str) -> None:
+    q = state.call(state.api().asset, symbol, quiet=True)
+    if q:
+        symbol_header(q)
 
 
 def symbol_header(q: dict) -> None:

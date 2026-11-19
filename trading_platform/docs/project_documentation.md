@@ -31,7 +31,7 @@ FR10 order and transaction history · FR11 price alerts + notifications · FR12 
 ## 5. Non-functional requirements
 Security (hashing, JWT, per-user data isolation, validation) · Reliability (DB transactions, rollback, backend-down message) ·
 Usability (professional dark/light UI, responsive layout) · Performance (quote caching, vectorised NumPy simulation,
-auto-refreshing watchlist) · Maintainability (layered architecture, 69 automated tests) · Honesty (simulated data is always labelled).
+auto-refreshing watchlist) · Maintainability (layered architecture, 73 automated tests) · Honesty (simulated data is always labelled).
 
 ## 6. Technologies used
 Python 3.12+ · Streamlit (UI) · Plotly (charts) · Pandas/NumPy (data & indicators) · FastAPI + Uvicorn (REST API) · Pydantic
@@ -103,13 +103,14 @@ All maths runs in `backend/services/trading_engine.py` inside one DB transaction
 Verified against hand-computed values and a published RSI example (70.53), and cross-checked with an independent loop implementation.
 
 ## 16. Testing documentation
-`pytest -q` → **69 tests, all passing**.
+`pytest -q` → **73 tests, all passing**.
 | File | What it proves |
 |---|---|
 | `test_auth.py` | registration, duplicate handling, validation, bcrypt hashing, login errors, protected routes (401), per-user isolation, settings, password change |
 | `test_markets.py` | quotes, filters, symbol formats, all 9 timeframes (OHLC validity), overview, news/calendar labelled as sample, every indicator vs hand calculations, indicator API errors |
 | `test_trading.py` | exact cash/position/avg-price/realized-P&L maths, equity identity, rejections (balance, quantity, symbol, order type), limit orders (pending, reservation, fill, cancel), alerts, reset, equity-curve regression |
 | `test_database.py` | tables, default 8-asset watchlist, add/remove/favourite, per-user watchlists, **full integration flow with a simulated restart** (register → login → watchlist → buy → portfolio → sell → history → restart → data and old JWT still valid) |
+| `test_live_providers.py` | Binance candle/quote parsing, per-provider fallback (never shown as live when it is not), simulated prices keep moving |
 | `test_frontend.py` | the real Streamlit app run with AppTest against the real API: login/register through the UI, wrong password error, all 9 pages render without exceptions, navigation, buying/selling through the order ticket, settings saved, watchlist add/remove, alert creation, friendly "backend down" message |
 
 Bugs found and fixed by testing/inspection: RSI used the wrong seeding (now canonical Wilder); "Top losers" listed rising assets;

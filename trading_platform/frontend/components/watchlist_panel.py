@@ -25,7 +25,7 @@ def _remove(symbol: str):
         st.toast(f"Removed {symbol}", icon="🗑️")
 
 
-@st.fragment(run_every=5)
+@st.fragment(run_every=3)
 def watchlist_panel(show_header: bool = True):
     api = state.api()
     items = state.call(api.watchlist, default=[]) or []
