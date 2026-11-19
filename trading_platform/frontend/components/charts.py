@@ -170,7 +170,7 @@ def controls(key: str) -> tuple[str, str, list[str]]:
     return tf, ct, st.session_state.get(in_key) or []
 
 
-REFRESH_SECONDS = 2
+REFRESH_SECONDS = 1
 
 
 def _render_chart(symbol, key, tf, ct, selected, height):

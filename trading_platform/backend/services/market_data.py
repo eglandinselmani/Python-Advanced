@@ -155,7 +155,7 @@ def search_assets(q: str, category: str | None = None) -> list[Asset]:
 
 
 # ----------------------------------------------------------------------------- simulator
-_PERIODS = np.array([1.1e8, 3e7, 8e6, 2e6, 6e5, 2e5, 8e4, 2.7e4, 9e3, 3e3, 1.1e3, 400, 130, 47, 19], dtype=float)
+_PERIODS = np.array([1.1e8, 3e7, 8e6, 2e6, 6e5, 2e5, 8e4, 2.7e4, 9e3, 3e3, 1.1e3, 400, 130, 47, 19, 13, 8, 5], dtype=float)
 _sim_params: dict[str, tuple[np.ndarray, np.ndarray]] = {}
 
 
@@ -163,7 +163,7 @@ def _params(asset: Asset):
     if asset.symbol not in _sim_params:
         rng = np.random.default_rng(zlib.crc32(asset.symbol.encode()))
         phases = rng.uniform(0, 2 * np.pi, len(_PERIODS))
-        amp = 0.5 * asset.daily_vol * np.maximum(np.sqrt(_PERIODS / 86400), 0.04)
+        amp = 0.5 * asset.daily_vol * np.maximum(np.sqrt(_PERIODS / 86400), 0.12)
         amp = np.minimum(amp, 0.12)
         _sim_params[asset.symbol] = (phases, amp)
     return _sim_params[asset.symbol]
