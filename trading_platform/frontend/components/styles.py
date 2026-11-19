@@ -20,9 +20,12 @@ def inject(theme_name: str) -> None:
 html, body, [class*="css"], .stApp, button, input, textarea {{ font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif !important; }}
 .stApp {{ background:var(--bg); color:var(--text); }}
 .stApp, .stApp p, .stApp label, .stApp span, .stApp li, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp div[data-testid="stMarkdownContainer"] {{ color:var(--text); }}
-[data-testid="stToolbar"], #MainMenu, footer {{ display:none !important; }}
+[data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"], .stDeployButton, #MainMenu, footer {{ display:none !important; }}
+[data-testid="stExpandSidebarButton"] {{ display:flex !important; z-index:100; }}
+[data-testid="stExpandSidebarButton"] button, [data-testid="stExpandSidebarButton"] {{ color:var(--text) !important; }}
+[data-testid="stExpandSidebarButton"] button {{ background:var(--panel2) !important; border:1px solid var(--border) !important; border-radius:8px; }}
 header[data-testid="stHeader"] {{ background:transparent !important; height:2.2rem; }}
-.block-container {{ padding:0.6rem 1.1rem 2rem 1.1rem !important; max-width:100% !important; }}
+.block-container {{ padding:2.7rem 1.1rem 2rem 1.1rem !important; max-width:100% !important; }}
 h1,h2,h3 {{ font-weight:600 !important; letter-spacing:-0.01em; }}
 h1 {{ font-size:1.5rem !important; }} h2 {{ font-size:1.2rem !important; }} h3 {{ font-size:1rem !important; }}
 hr {{ border-color:var(--border) !important; margin:0.6rem 0 !important; }}
